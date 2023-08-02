@@ -1,0 +1,303 @@
+B[\[Lambda]_, cc_, pp_, rr_] := 
+  Module[{z = 0, l, i}, l = Length[\[Lambda]]; 
+   If[rr >= pp, z = 0, 
+    If[l > 0, 
+     For[i = 1, i <= l, i++, 
+      z = z + Floor[(\[Lambda][[i]] + Mod[cc - i - rr, pp])/pp]]]]; z
+   ];
+NoDiagrams1[kk_, \[Sigma]_, \[Delta]k_, r_, s_] := 
+  Module[{NN, nn, possSizes, possSizes2, ll, storeSizes, possDiagrams,
+     t, nonBurgeDiags, j, numberOfBurgeTuples}, NN = Length[\[Sigma]];
+    numberOfBurgeTuples = 0; nn = Length[\[Delta]k] + 1;(*Print[s];*)
+   possSizes = IntegerPartitions[kk, NN]; 
+   storeSizes = 
+    Table[PadRight[possSizes[[i1]], NN], {i1, Length[possSizes]}];
+   possSizes2 = Flatten[Map[Permutations, storeSizes], 1]; 
+   Do[possDiagrams = 
+     Tuples[Table[IntegerPartitions[possSizes2[[i2, i3]]], {i3, NN}]];
+     Do[If[nn == 1 \[Or] 
+       Table[Sum[
+          B[possDiagrams[[i4, i5]], \[Sigma][[i5]], nn, i6] - 
+           B[possDiagrams[[i4, i5]], \[Sigma][[i5]], nn, 0], {i5, 
+           NN}], {i6, nn - 1}] == \[Delta]k, t = 0; 
+      ll = Max[Map[Length, possDiagrams[[i4]]]]; 
+      nonBurgeDiags = 
+       Table[PadRight[possDiagrams[[i4, i7]], ll + Max[r]], {i7, 
+         Length[possDiagrams[[i4]]]}];(*Print[nonBurgeDiags];Print[
+      possDiagrams];Print[ll];*)j = 1;
+      Do[
+       While[t < 1 && j <= ll, 
+        If[nonBurgeDiags[[i9, j]] < 
+          nonBurgeDiags[[i9 + 1, j + r[[i9]] - 1]] - s[[i9]] + 1, 
+         t = t + 1;]; j++]; j = 1, {i9, NN - 1}]; j = 1; 
+      While[t < 1 && j <= ll, 
+       If[nonBurgeDiags[[NN, j]] < 
+         nonBurgeDiags[[1, j + r[[NN]] - 1]] - s[[NN]] + 1, 
+        t = t + 1; ]; j++]; 
+      If[t == 0, 
+       numberOfBurgeTuples = numberOfBurgeTuples + 1;(*Print[
+       nonBurgeDiags]*)]]
+     , {i4, Length[possDiagrams]}];(*Print[
+    possDiagrams]*), {i2, Length[possSizes2]}];(*Print[possSizes2];*)
+   numberOfBurgeTuples];
+BurgeGenFunction1[nn_, \[CapitalSigma]_, \[Delta]K_, r_, s_] := 
+  Sum[NoDiagrams1[i, \[CapitalSigma], \[Delta]K, r, s] q^(i/(
+    Length[\[Delta]K] + 1)), {i, 0, nn}];
+NoDiagrams2[kk_, \[Sigma]_, \[Delta]k_, \[Zeta]_, \[Xi]_] := 
+  Module[{NN, nn, possSizes, possSizes2, ll, storeSizes, possDiagrams,
+     t, nonBurgeDiags, j, numberOfBurgeTuples}, NN = Length[\[Sigma]];
+    numberOfBurgeTuples = 0; nn = Length[\[Delta]k] + 1;(*Print[s];*)
+   possSizes = IntegerPartitions[kk, NN]; 
+   storeSizes = 
+    Table[PadRight[possSizes[[i1]], NN], {i1, Length[possSizes]}];
+   possSizes2 = Flatten[Map[Permutations, storeSizes], 1]; 
+   Do[possDiagrams = 
+     Tuples[Table[
+       IntegerPartitions[possSizes2[[i2, i3]]], {i3, NN}]];(*Print[
+    possDiagrams];*)
+    Do[If[nn == 1 \[Or] 
+       Table[Sum[
+          B[possDiagrams[[i4, i5]], \[Sigma][[i5]], nn, i6] - 
+           B[possDiagrams[[i4, i5]], \[Sigma][[i5]], nn, 0], {i5, 
+           NN}], {i6, nn - 1}] == \[Delta]k, t = 0; 
+      ll = Max[Map[Length, possDiagrams[[i4]]]]; 
+      nonBurgeDiags = 
+       Table[PadRight[possDiagrams[[i4, i7]], ll + Max[\[Zeta]]], {i7,
+          Length[possDiagrams[[i4]]]}];(*Print[nonBurgeDiags];Print[
+      possDiagrams];Print[ll];*)j = 1;
+      Do[
+       While[t < 1 && j <= ll, 
+        If[nonBurgeDiags[[i9 - 1, j]] < 
+          nonBurgeDiags[[i9, j + \[Zeta][[i9]]]] - \[Xi][[i9]], 
+         t = t + 1;]; j++]; j = 1, {i9, 2, NN}]; j = 1; 
+      While[t < 1 && j <= ll, 
+       If[nonBurgeDiags[[NN, j]] < 
+         nonBurgeDiags[[1, j + \[Zeta][[1]]]] - \[Xi][[1]], 
+        t = t + 1; ]; j++]; 
+      If[t == 0, numberOfBurgeTuples = numberOfBurgeTuples + 1(*;
+       Print[nonBurgeDiags]*)]]
+     , {i4, Length[possDiagrams]}];(*Print[
+    possDiagrams]*), {i2, Length[possSizes2]}];(*Print[possSizes2];*)
+   numberOfBurgeTuples];
+TotalNoBurgeDiagrams[kk_, \[Zeta]_, \[Xi]_] := 
+  Module[{NN, nn, possSizes, possSizes2, ll, storeSizes, possDiagrams,
+     t, nonBurgeDiags, j, numberOfBurgeTuples}, NN = Length[\[Zeta]]; 
+   numberOfBurgeTuples = 0;(*Print[s];*)
+   possSizes = IntegerPartitions[kk, NN]; 
+   storeSizes = 
+    Table[PadRight[possSizes[[i1]], NN], {i1, Length[possSizes]}];
+   possSizes2 = Flatten[Map[Permutations, storeSizes], 1]; 
+   Do[possDiagrams = 
+     Tuples[Table[
+       IntegerPartitions[possSizes2[[i2, i3]]], {i3, NN}]];(*Print[
+    possDiagrams];*)
+    Do[t = 0; ll = Max[Map[Length, possDiagrams[[i4]]]]; 
+     nonBurgeDiags = 
+      Table[PadRight[possDiagrams[[i4, i7]], ll + Max[\[Zeta]]], {i7, 
+        Length[possDiagrams[[i4]]]}];(*Print[nonBurgeDiags];Print[
+     possDiagrams];Print[ll];*)j = 1;
+     Do[While[t < 1 && j <= ll, 
+       If[nonBurgeDiags[[i9 - 1, j]] < 
+         nonBurgeDiags[[i9, j + \[Zeta][[i9]]]] - \[Xi][[i9]], 
+        t = t + 1;]; j++]; j = 1, {i9, 2, NN}]; j = 1; 
+     While[t < 1 && j <= ll, 
+      If[nonBurgeDiags[[NN, j]] < 
+        nonBurgeDiags[[1, j + \[Zeta][[1]]]] - \[Xi][[1]], 
+       t = t + 1; ]; j++]; 
+     If[t == 0, numberOfBurgeTuples = numberOfBurgeTuples + 1; 
+      Print[nonBurgeDiags]]
+     , {i4, Length[possDiagrams]}];(*Print[
+    possDiagrams]*), {i2, Length[possSizes2]}];(*Print[possSizes2];*)
+   numberOfBurgeTuples];
+PrintBurgeDiagrams[kk_, \[Zeta]_, \[Xi]_] := 
+  Module[{NN, nn, possSizes, possSizes2, ll, storeSizes, possDiagrams,
+     t, nonBurgeDiags, j, numberOfBurgeTuples}, NN = Length[\[Zeta]]; 
+   numberOfBurgeTuples = 0;(*Print[s];*)
+   possSizes = IntegerPartitions[kk, NN]; 
+   storeSizes = 
+    Table[PadRight[possSizes[[i1]], NN], {i1, Length[possSizes]}];
+   possSizes2 = Flatten[Map[Permutations, storeSizes], 1]; 
+   Do[possDiagrams = 
+     Tuples[Table[
+       IntegerPartitions[possSizes2[[i2, i3]]], {i3, NN}]];(*Print[
+    possDiagrams];*)
+    Do[t = 0; ll = Max[Map[Length, possDiagrams[[i4]]]]; 
+     nonBurgeDiags = 
+      Table[PadRight[possDiagrams[[i4, i7]], ll + Max[\[Zeta]]], {i7, 
+        Length[possDiagrams[[i4]]]}];(*Print[nonBurgeDiags];Print[
+     possDiagrams];Print[ll];*)j = 1;
+     Do[While[t < 1 && j <= ll, 
+       If[nonBurgeDiags[[i9 - 1, j]] < 
+         nonBurgeDiags[[i9, j + \[Zeta][[i9]]]] - \[Xi][[i9]], 
+        t = t + 1;]; j++]; j = 1, {i9, 2, NN}]; j = 1; 
+     While[t < 1 && j <= ll, 
+      If[nonBurgeDiags[[NN, j]] < 
+        nonBurgeDiags[[1, j + \[Zeta][[1]]]] - \[Xi][[1]], 
+       t = t + 1; ]; j++]; 
+     If[t == 0, numberOfBurgeTuples = numberOfBurgeTuples + 1; 
+      Print[nonBurgeDiags]]
+     , {i4, Length[possDiagrams]}];(*Print[
+    possDiagrams]*), {i2, Length[possSizes2]}];(*Print[possSizes2];*)
+   numberOfBurgeTuples];
+BurgeGenFunction2[
+   nn_, \[CapitalSigma]_, \[Delta]K_, \[Zeta]_, \[Xi]_] := 
+  Sum[NoDiagrams2[i, \[CapitalSigma], \[Delta]K, \[Zeta], \[Xi]] q^(
+    i/(Length[\[Delta]K] + 1)), {i, 0, nn}];
+TotalBurgeGenFn[nn_, \[Zeta]_, \[Xi]_] := 
+  Sum[TotalNoBurgeDiagrams[i, \[Zeta], \[Xi]] q^i, {i, 0, nn}];
+BurgeGenFunction3[nn_, \[Delta]K_, \[Zeta]_, \[Xi]_] := 
+  Module[{\[CapitalSigma]}, \[CapitalSigma] = 
+    Table[Sum[\[Zeta][[j]] - \[Xi][[j]], {j, 1, i}], {i, 1, 
+      Length[\[Xi]]}];(*Print[\[CapitalSigma]];*)
+   \[CapitalSigma] = 
+    Map[Mod[#, 
+       Length[\[Delta]K] + 
+        1] &, \[CapitalSigma]];(*Print[\[CapitalSigma]];*)
+   Sum[NoDiagrams2[i, \[CapitalSigma], \[Delta]K, \[Zeta], \[Xi]] q^(
+     i/(Length[\[Delta]K] + 1)), {i, 0, nn}]];
+DeltaK[\[Eta]_, \[Zeta]_, \[Xi]_] := 
+  Module[{m, n, InverseCartan, store, dual1, 
+    dual2, \[Eta]duals, \[Sigma]s, \[Eta]dual, 
+    first\[Eta]dual, \[Delta]k, c, \[Delta]ks}, 
+   n = Total[\[Zeta] - \[Xi]];
+   m = Length[\[Eta]];
+   InverseCartan = 
+    Table[Min[i, j] - (i j)/n, {i, 0, n - 1}, {j, 0, n - 1}];
+   dual1 = 
+    Table[Mod[Sum[\[Zeta][[i]] - \[Xi][[i]], {i, 1, j}], n], {j, 1, 
+      Length[\[Zeta]]}];
+   (*Print[dual1];*)
+   dual2 = Table[Count[dual1, j], {j, 0, n - 1}];
+   (*Print[dual2];*)
+   \[Sigma]s = Table[Mod[Sum[\[Eta][[i]], {i, 1, k}], n], {k, 1, m}];
+   (*Print[\[Sigma]s];*)
+   first\[Eta]dual = Table[Count[\[Sigma]s, i], {i, 0, n - 1}];
+   (*Print[first\[Eta]dual];*)
+   \[Eta]duals = Permute[first\[Eta]dual, CyclicGroup[n]];
+   (*Print[\[Eta]duals];*)
+   c = 0;
+   \[Delta]ks = {};
+   Do[If[
+      Mod[Sum[(i - 1) \[Eta]duals[[j, i]], {i, 1, n}], n] == 
+       Mod[Sum[(i - 1) dual2[[i]], {i, 1, n}], n],
+      store = InverseCartan . (dual2 - \[Eta]duals[[j]]);
+      (*Print[\[Eta]duals[[j]]];
+      Print[store];*)
+      \[Delta]k = Drop[store, 1];
+      (*If[Min[store]\[GreaterEqual]0,store,store-ConstantArray[Min[
+      store],Length[\[Zeta]]]]*);
+      (*Print[\[Delta]k];*)
+      \[Delta]ks = Join[\[Delta]ks, {\[Delta]k}]];
+    (*\[Delta]ks];*)
+    , {j, 1, n}];
+   \[Delta]ks];
+OrderedDynkinLabels[l_, n_] := Module[{posslabels, orderedlabels},
+   posslabels = 
+    Flatten[Map[Permutations, 
+      Map[PadRight[#, n] &, IntegerPartitions[l, n]]], 1];
+   orderedlabels = 
+    Map[Reverse,(*Reverse[*)NumericalSort[posslabels](*]*)]];
+DeltaKMatrix[dd_, d_, \[Eta]_] := 
+  Module[{ColumnLbls, RowLbls, n}, n = Length[\[Eta]]; 
+   ColumnLbls = OrderedDynkinLabels[d, n];
+   RowLbls = OrderedDynkinLabels[dd, n];
+   Print["Column Labels"];
+   Print[ColumnLbls];
+   Print["Row Labels"];
+   Print[RowLbls];
+   Table[
+    If[Mod[Sum[(k - 1) \[Eta][[k]], {k, 1, n}], n] == 
+      Mod[Sum[(k - 1) (ColumnLbls[[j]] - RowLbls[[i]])[[k]], {k, 1, 
+         n}], n], 
+     If[GCD[n, d - dd] == 1, 
+      Flatten[DeltaK[\[Eta], ColumnLbls[[j]], RowLbls[[i]]]], 
+      DeltaK[\[Eta], ColumnLbls[[j]], RowLbls[[i]]]], {}], {i, 1, 
+     Length[RowLbls]}, {j, 1, Length[ColumnLbls]}]
+   ];
+DeltaKEvens[\[Eta]_, \[Zeta]_, \[Xi]_] := 
+  Module[{m, n, InverseCartan, store, dual1, 
+    dual2, \[Eta]duals, \[Sigma]s, \[Eta]dual, 
+    first\[Eta]dual, \[Delta]k, c, \[Delta]ks}, 
+   n = Total[\[Zeta] - \[Xi]];
+   m = 2;
+   InverseCartan = 
+    Table[Min[i, j] - (i j)/n, {i, 0, n - 1}, {j, 0, n - 1}];
+   dual1 = 
+    Table[Mod[Sum[\[Zeta][[i]] - \[Xi][[i]], {i, 1, j}], n], {j, 1, 
+      Length[\[Zeta]]}];
+   (*Print[dual1];*)
+   dual2 = Table[Count[dual1, j], {j, 0, n - 1}];
+   (*Print[dual2];*)
+   \[Sigma]s = Table[Mod[Sum[\[Eta][[i]], {i, 1, k}], n], {k, 1, m}];
+   (*Print[\[Sigma]s];*)
+   first\[Eta]dual = Table[Count[\[Sigma]s, i], {i, 0, n - 1}];
+   (*Print[first\[Eta]dual];*)
+   \[Eta]duals = Permute[first\[Eta]dual, CyclicGroup[n]];
+   (*Print[\[Eta]duals];*)
+   If[EvenQ[First[\[Zeta] - \[Xi] - \[Eta]]], 
+    c = First[\[Zeta] - \[Xi] - \[Eta]]/2;
+    \[Delta]ks = 
+     Drop[InverseCartan . (dual2 - \[Eta]duals[[Mod[1 - c, n]]]), 1];
+    , \[Delta]ks = {}];
+   \[Delta]ks];
+DeltaKEvenMatrix[dd_, d_, \[Eta]_] := 
+  Module[{ColumnLbls, RowLbls, n}, n = 2; 
+   ColumnLbls = OrderedDynkinLabels[d, n];
+   RowLbls = OrderedDynkinLabels[dd, n];
+   Print["Column Labels"];
+   Print[ColumnLbls];
+   Print["Row Labels"];
+   Print[RowLbls];
+   Table[
+    DeltaKEvens[\[Eta], ColumnLbls[[j]], RowLbls[[i]]], {i, 1, 
+     Length[RowLbls]}, {j, 1, Length[ColumnLbls]}]
+   ];
+BurgeMatrix[dd_, d_, \[Eta]_, l_] := 
+  Module[{ColumnLbls, RowLbls, n, \[Delta]ks}, n = Length[\[Eta]]; 
+   ColumnLbls = OrderedDynkinLabels[d, n];
+   RowLbls = OrderedDynkinLabels[dd, n];
+   Print["Column Labels"];
+   Print[ColumnLbls];
+   Print["Row Labels"];
+   Print[RowLbls];
+   \[Delta]ks = DeltaKMatrix[dd, d, \[Eta]];
+   (*Print[\[Delta]ks];*)
+   Table[
+    If[\[Delta]ks[[i, j]] == {}, 0, 
+     BurgeGenFunction3[l, \[Delta]ks[[i, j]], ColumnLbls[[j]], 
+      RowLbls[[i]]]], {i, 1, Length[RowLbls]}, {j, 1, 
+     Length[ColumnLbls]}]
+   ];
+BurgeMatrixEven[dd_, d_, \[Eta]_, l_] := 
+  Module[{ColumnLbls, RowLbls, n, \[Delta]ks}, n = Length[\[Eta]]; 
+   ColumnLbls = OrderedDynkinLabels[d, n];
+   RowLbls = OrderedDynkinLabels[dd, n];
+   Print["Column Labels"];
+   Print[ColumnLbls];
+   Print["Row Labels"];
+   Print[RowLbls];
+   \[Delta]ks = DeltaKEvenMatrix[dd, d, \[Eta]];
+   Table[
+    If[\[Delta]ks[[i, j]] == {}, 0, 
+     BurgeGenFunction3[l, \[Delta]ks[[i, j]], ColumnLbls[[j]], 
+      RowLbls[[i]]]], {i, 1, Length[RowLbls]}, {j, 1, 
+     Length[ColumnLbls]}]
+   ];
+nQuotients[\[Lambda]_, n_] := 
+  Module[{\[Beta], remainders, iQuotient, iQuotient\[Beta], positions,
+     s}, \[Beta] = 
+    Table[\[Lambda][[j]] - j, {j, 
+      1, (Flatten[Position[\[Lambda], 0, 1, 1]][[1]])}];
+   Do[remainders = Mod[#, n] & /@ \[Beta];
+    positions = Flatten[Position[remainders, i], 2];
+    (*Print[remainders];
+    Print[positions]*)
+    iQuotient\[Beta] = (\[Beta][[positions]] - i)/n;
+    (*Print[iQuotient\[Beta]];*)
+    s = Last[iQuotient\[Beta]] + Length[iQuotient\[Beta]];
+    iQuotient = 
+     Table[iQuotient\[Beta][[k]] + k - s, {k, 1, 
+       Length[iQuotient\[Beta]]}];
+    Print[i] Print["Quotient"];
+    Print[iQuotient];, {i, 0, n - 1}]
+   ];

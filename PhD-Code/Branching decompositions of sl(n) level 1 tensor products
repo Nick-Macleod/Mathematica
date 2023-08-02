@@ -1,0 +1,341 @@
+(*This will use BranchingDecomp, to select the contributing nodes at \
+each step of a tensor product of n level 1 HW irreps (here \
+represented as the list of integers t, read left to right in the \
+tensor product) to succesively calculate the coefficients of highest \
+weights in the branching decomposition*)
+L1BranchingDecomp[t_, n_] := 
+  Module[{a, store, NN, TempStore}, NN = Length[t]; 
+   a = Table[DiscreteDelta[t[[NN]] + 1 - i], {i, 1, n}];
+   store = 
+    Table[{Table[DiscreteDelta[t[[NN]] + 1 - i], {i, 1, n + 1}], 
+      BranchingDecomp[a, t[[NN - 1]]][[i]]}, {i, 1, 
+      Length[BranchingDecomp[a, t[[NN - 1]]]]}];
+   Do[If[NN > 2, TempStore = {}; 
+     Do[TempStore = 
+       Join[TempStore, 
+        Table[Append[store[[i]], 
+          BranchingDecomp[Drop[Last[store[[i]]], -1], t[[NN - j]]][[
+           k]]], {k, 1, 
+          Length[BranchingDecomp[Drop[Last[store[[i]]], -1], 
+            t[[NN - j]]]]}]], {i, 1, Length[store]}];
+     store = TempStore;], {j, 2, NN - 1}];
+   store];
+
+(*We want to take the tensor product of a highest weight vector and a \
+level 1 affine sl(n) rep and spit out the highest weight branching \
+decomposition with the correct q factors for the character function*)
+(*To do this we take in a sl(n) highest weight vector and a \
+fundamental weight (which is c, the colour charge of the \
+corresponding Young diagram n-core), and then use select to choose \
+all the nodes in the crystal graph (from the function "weights") that \
+will give highest weights, and then return characters with the \
+correct labels of Dynkin weights and q prefactors*)
+BranchingDecomp[\[CapitalLambda]_, c_] := 
+  Module[{HighestWeights, n, l, ContributingNodes}, 
+   n = Length[\[CapitalLambda]]; l = Total[\[CapitalLambda]]; 
+   ContributingNodes = 
+    Select[Weights[n, l, c], 
+     Apply[And][Thread[Delete[#, n + 1] >= -\[CapitalLambda]]] &];
+   HighestWeights = 
+    Table[Append[
+      Thread[\[CapitalLambda] + Take[ContributingNodes[[i]], n]], 
+      ContributingNodes[[i, n + 1]]], {i, 1, 
+      Length[ContributingNodes]}]];
+
+(*This code will generate the number of boxes colours as a list \
+starting with colour 0 of all n-cores corresponding to Subscript[K, \
+i]=-l,...,l for all i, using this we can calculate the weight vectors \
+of a level 1 representation and their q coefficient*)
+Cores[n_, l_, c_] := 
+  Module[{KValues2, CoreLabels, ColourData, KValues}, 
+   CoreLabels = Tuples[Table[i, {i, -l, l}], n - 1]; ColourData = {};
+   Do[KValues = 
+     Append[CoreLabels[[
+       i]], -Sum[CoreLabels[[i, j]], {j, 1, n - 1}]];
+    ColourData = 
+     Append[ColourData, 
+      Table[If[m - c <= 0, 
+        1/2 Sum[KValues[[i]]^2, {i, 1, n}] - 
+         Sum[KValues[[i]], {i, 1, m - 1 - c + n}], 
+        1/2 Sum[KValues[[i]]^2, {i, 1, n}] - 
+         Sum[KValues[[i]], {i, 1, m - 1 - c}]], {m, 1, n}]], {i, 1, 
+     Length[CoreLabels]}];
+   ColourData
+   (*{{ColourData},{CoreLabels},{KValues}}*)
+   ];
+Weights[n_, l_, c_] := Module[{list, vectors}, list = Cores[n, l, c];
+   vectors = {};
+   Do[vectors = 
+     Append[vectors, 
+      Append[Table[
+        list[[i, Mod[j - 1 - 1, n] + 1]] + list[[i, Mod[j, n] + 1]] - 
+         2 list[[i, j]] + DiscreteDelta[c - j + 1], {j, 1, n}], q^
+       list[[i, 1]]]], {i, 1, Length[list]}];
+   vectors];
+BranchingCoeff[t_, n_, l_] := 
+  Module[{storage, MM}, 
+   storage = 
+    GatherBy[L1BranchingDecomp[t, n], Delete[Last[#], -1] &];
+   MM = Length[t];
+   Table[
+    Sum[ Product[\[Chi][i + n, i + n + 1, 
+        Delete[storage[[j, k, i]], -1], 
+        Delete[storage[[j, k, i + 1]], -1], l] Last[
+        storage[[j, k, i + 1]]], {i, 1, MM - 1}], {k, 1, 
+      Length[storage[[j]]]}], {j, 1, Length[storage]}]];
+(*This generates the rules for level l weights that attach an order \
+as the last element to the output of L1BranchingDecomp. We order the \
+Dynkin labels numerically starting from the last lable (ie Subscript[\
+\[CapitalLambda], 1]<Subscript[\[CapitalLambda], 2] if Subscript[z, \
+k,1]<Subscript[z, k,2] or Subscript[z, k,1]=Subscript[z, k,2] and \
+Subscript[z, k-1,1]<Subscript[z, k-1,2] for sl(k+1) weights*)
+DynkinRules[l_, n_] := Module[{posslabels, orderedlabels},
+   posslabels = 
+    Flatten[Map[Permutations, 
+      Map[PadRight[#, n] &, IntegerPartitions[l, n]]], 1];
+   orderedlabels = 
+    Map[Reverse,(*Reverse[*)NumericalSort[posslabels](*]*)];
+   Table[
+    Append[orderedlabels[[i]], q_] -> 
+     Append[Append[orderedlabels[[i]], q], i], {i, 1, 
+     Length[orderedlabels]}]];
+OrderedDynkinLabels[l_, n_] := Module[{posslabels, orderedlabels},
+   posslabels = 
+    Flatten[Map[Permutations, 
+      Map[PadRight[#, n] &, IntegerPartitions[l, n]]], 1];
+   orderedlabels = 
+    Map[Reverse,(*Reverse[*)NumericalSort[posslabels](*]*)]];
+(*The next piece of code takes output from L1BranchingCoeffs and \
+gives you the matrices for a desired level for Trevor's approach. \
+Note you need to start with all possible variations for the first \
+level 1 rep in the tensor product as this gives you *)
+BMatrix[k_, l_, n_] := 
+  Module[{completebranching, labels, completebranching2, OutputMatrix,
+     unorganisedrow, organisedrow}, labels = PadRight[{k}, l - 1];
+   (*Print[labels];*)
+   completebranching = 
+    Flatten[Join[
+      Table[L1BranchingDecomp[Append[labels, i], n], {i, 0, n - 1}]], 
+     1];
+   (*Print[completebranching];*)
+   completebranching2 = 
+    completebranching /. DynkinRules[l, n] /. DynkinRules[l - 1, n];
+   (*Print[completebranching2];*)
+   OutputMatrix = {};
+   Do[unorganisedrow = 
+     Select[completebranching2, #[[l - 1, n + 2]] == i &];
+    organisedrow = 
+     Table[0, {i, 1, 
+       Max[Table[
+         unorganisedrow[[j, l, n + 2]], {j, 1, 
+          Length[unorganisedrow]}]]}];
+    Do[organisedrow = 
+       ReplacePart[organisedrow, 
+        unorganisedrow[[j, l, n + 2]] -> 
+         unorganisedrow[[j, l, n + 1]]];, {j, 1, 
+      Length[unorganisedrow]}];
+    OutputMatrix = Join[OutputMatrix, {organisedrow}];, {i, 1, 
+     Max[Table[
+       completebranching2[[j, l - 1, n + 2]], {j, 1, 
+        Length[completebranching2]}]]}];
+   Print[" Column Labels "];
+   Print[OrderedDynkinLabels[l, n]]; Print[" Row Labels "];
+   Print[OrderedDynkinLabels[l - 1, n]]; PadRight[OutputMatrix]];
+Cls[\[Xi]_, n_] := 
+  Mod[Sum[(i - 1) \[Xi][[i]], {i, 1, Length[\[Xi]]}], n];
+BMatrixChi1[k_, l_, n_, p_] := 
+  Module[{ColLabels, RowLabels}, ColLabels = OrderedDynkinLabels[l, n];
+   RowLabels = OrderedDynkinLabels[l - 1, n];
+   Print["Column Labels"];
+   Print[ColLabels];
+   Print["Row Labels"];
+   Print[RowLabels];
+   Table[
+    If[Cls[ColLabels[[j]] - RowLabels[[i]], n] == k, 
+     q^(1/2 (SLnInnrProd[ColLabels[[j]] - RowLabels[[i]], 
+          ColLabels[[j]] - RowLabels[[i]]]) - 1/2 (k - k k/n)) \[Chi][
+       n + l - 1, n + l, RowLabels[[i]], ColLabels[[j]], p], 0], {i, 
+     1, Length[RowLabels]}, {j, 1, Length[ColLabels]}]];
+SLnInnrProd[\[Xi]_, \[Zeta]_] := 
+  Module[{n, InverseCartan}, n = Length[\[Xi]];
+   (*InverseCartan=Table[Min[i,j]-(i j)/n,{i,0,n-1},{j,0,n-1}];*)
+   Sum[Sum[\[Xi][[i + 1]] \[Zeta][[j + 1]] (Min[i, j] - (i j)/n), {j, 
+      0, n - 1}], {i, 0, n - 1}]];
+BMatrixChi[k_, l_, n_, z_] := 
+  Module[{completebranching, labels, completebranching2, OutputMatrix,
+     unorganisedrow, organisedrow}, labels = PadRight[{k}, l - 1];
+   (*Print[labels];*)
+   completebranching = 
+    Flatten[Join[
+      Table[L1BranchingDecomp[Append[labels, i], n], {i, 0, n - 1}]], 
+     1];
+   (*Print[completebranching];*)
+   completebranching2 = 
+    completebranching /. DynkinRules[l, n] /. DynkinRules[l - 1, n];
+   (*Print[completebranching2];*)
+   OutputMatrix = {};
+   Do[unorganisedrow = 
+     Select[completebranching2, #[[l - 1, n + 2]] == i &];
+    organisedrow = 
+     Table[0, {i, 1, 
+       Max[Table[
+         unorganisedrow[[j, l, n + 2]], {j, 1, 
+          Length[unorganisedrow]}]]}];
+    Do[organisedrow = 
+       ReplacePart[organisedrow, 
+        unorganisedrow[[j, l, n + 2]] -> 
+         unorganisedrow[[j, l, n + 1]] \[Chi][l + n - 1, l + n, 
+           Delete[unorganisedrow[[j, l - 1]], {{-1}, {-2}}], 
+           Delete[unorganisedrow[[j, l]], {{-1}, {-2}}], z]];, {j, 1, 
+      Length[unorganisedrow]}];
+    OutputMatrix = Join[OutputMatrix, {organisedrow}];, {i, 1, 
+     Max[Table[
+       completebranching2[[j, l - 1, n + 2]], {j, 1, 
+        Length[completebranching2]}]]}];
+   Print[" Column Labels "];
+   Print[OrderedDynkinLabels[l, n]]; Print[" Row Labels "];
+   Print[OrderedDynkinLabels[l - 1, n]]; PadRight[OutputMatrix]];
+BHatMatrix[dd_, d_, \[Eta]_, k_] := 
+  Module[{n, second\[Eta]}, n = Length[\[Eta]];
+   second\[Eta] = 
+    Join[Flatten[Table[ConstantArray[i - 1, \[Eta][[i]]], {i, 1, n}]]];
+   Print[second\[Eta]];
+   Series[
+    PGenFn[20]^(d - dd)
+      Dot @@ Table[
+       BMatrixChi1[second\[Eta][[i]], dd + i, n, k], {i, 1, 
+        d - 1}], {q, 0, 10}]
+   ];
+PGenFn[n_] := Sum[PartitionsP[k] q^k, {k, 0, n}];
+(*\[Zeta] is the output Dynkin label with partition \[Nu], \[Xi] is \
+input Dynkin label with partition \[Mu]*)
+
+
+
+\[Chi][p_, o_, \[Xi]_, \[Zeta]_, 
+  l_] :=(*If[Length[\[Zeta]]\[Equal]Length[\[Xi]]&&AllTrue[\[Zeta],#\
+\[GreaterEqual]0&]&&AllTrue[\[Xi],#\[GreaterEqual]0&]&&AllTrue[\[Zeta]\
+,IntegerQ]&&AllTrue[\[Xi],IntegerQ]&&Length[\[Zeta]]\[LessEqual]p,*)
+ Module[{n, tuples, Par\[Zeta], Par\[Xi]}, n = Length[\[Zeta]];
+  (*tuples defines the first n-1 Subscript[k, i]
+   values in the Subscript[W, N] character formula*)
+  tuples = Tuples[Table[i, {i, -l, l}], n - 1];
+  Par\[Zeta] = 
+   Append[Table[Sum[\[Xi][[k]], {k, i + 1, n}], {i, 1, n - 1}], 0]; 
+  Par\[Xi] = 
+   Append[Table[Sum[\[Zeta][[k]], {k, i + 1, n}], {i, 1, n - 1}], 0];
+  PGenFn[l]^(n - 1)
+    Sum[q^o (Sum[
+         tuples[[m, 
+           j]] (1/2 tuples[[m, j]] p - Par\[Zeta][[j]] + j), {j, 1, 
+          n - 1}]
+        - 
+        Sum[tuples[[m, k]], {k, 1, 
+           n - 1}] (-1/2 Sum[tuples[[m, k]], {k, 1, n - 1}] p + n))
+     
+     
+     Det[
+      Append[Table[
+        q^((Par\[Xi][[j]] - j) (p tuples[[m, i]] - Par\[Zeta][[i]] + 
+           i + Par\[Zeta][[j]] - j)), {i, 1, n - 1}, {j, 1, n}], 
+       Table[q^((Par\[Xi][[j]] - 
+           j) (p (-Sum[tuples[[m, k]], {k, 1, n - 1}]) + n + 
+           Par\[Zeta][[j]] - j)), {j, 1, n}]]], {m, 1, 
+     Length[tuples]}]]
+
+
+
+(*\[Chi]3[p_,o_,\[Xi]_,\[Zeta]_,l_]:=If[Length[\[Zeta]]\[Equal]Length[\
+\[Xi]]&&Length[\[Zeta]]\[Equal]3&&AllTrue[\[Zeta],#\[GreaterEqual]0&]&&\
+AllTrue[\[Xi],#\[GreaterEqual]0&]&&AllTrue[\[Zeta],IntegerQ]&&AllTrue[\
+\[Xi],IntegerQ],Module[{Par\[Xi],Par\[Zeta]},Par\[Xi]=Append[Table[\
+Sum[\[Xi][[k]],{k,i+1,3}],{i,1,2}],0]; 
+Par\[Zeta]=Append[Table[Sum[\[Zeta][[k]],{k,i+1,3}],{i,1,2}],0];
+PGenFn[l]^2Sum[q^(o ((-i1-i2)(1/2p (-i1-i2)-Par\[Xi][[1]]+1)+i1(1/2p \
+i1-Par\[Xi][[2]]+2)+i2(1/2p \
+i2-Par\[Xi][[3]]+3)))Det[{{q^((Par\[Zeta][[1]]-1)(p \
+(-i1-i2)-Par\[Xi][[1]]+1+Par\[Xi][[1]]-1)),q^((Par\[Zeta][[2]]-2)(p \
+(-i1-i2)-Par\[Xi][[1]]+1+Par\[Xi][[2]]-2)),q^((Par\[Zeta][[3]]-3)(p \
+(-i1-i2)-Par\[Xi][[1]]+1+Par\[Xi][[3]]-3))},{q^((Par\[Zeta][[1]]-1)(p \
+i1 -Par\[Xi][[2]]+2+Par\[Xi][[1]]-1)),q^((Par\[Zeta][[2]]-2)(p  i1-\
+Par\[Xi][[2]]+2+Par\[Xi][[2]]-2)),q^((Par\[Zeta][[3]]-3)(p  i1-Par\
+\[Xi][[2]]+2+Par\[Xi][[3]]-3))},{q^((Par\[Zeta][[1]]-1)(p i2 \
+-Par\[Xi][[3]]+3+Par\[Xi][[1]]-1)),q^((Par\[Zeta][[2]]-2)(p  i2-Par\
+\[Xi][[3]]+3+Par\[Xi][[2]]-2)),q^((Par\[Zeta][[3]]-3)(p  i2-Par\[Xi][[\
+3]]+3+Par\[Xi][[3]]-3))}}],{i1,-l,l},{i2,-l,l}]],Which[Length[\[Zeta]]\
+\[NotEqual]Length[\[Xi]],Print["Input labels are not matching \
+length."],Length[\[Zeta]]||Length[\[Xi]],Print["One or both of input \
+labels are not length 3 and do not correspond to dominant affine \
+sl(2) weights."],!AllTrue[\[Zeta],#\[GreaterEqual]0&]&&AllTrue[\[Xi],#\
+\[GreaterEqual]0&],Print["One or both of input labels are not \
+dominant \
+weights."],!AllTrue[\[Zeta],IntegerQ]&&AllTrue[\[Xi],IntegerQ],Print[\
+"One or both of input labels are not integral weights."]]];*)
+\[Chi]2[p_, o_, \[Xi]_, \[Zeta]_, l_] := 
+  If[Length[\[Zeta]] == Length[\[Xi]] && Length[\[Zeta]] == 2 && 
+    AllTrue[\[Zeta], # >= 0 &] && AllTrue[\[Xi], # >= 0 &] && 
+    AllTrue[\[Zeta], IntegerQ] && AllTrue[\[Xi], IntegerQ], 
+   Module[{Par\[Xi], Par\[Zeta]}, 
+    Par\[Xi] = 
+     Append[Table[Sum[\[Xi][[k]], {k, i + 1, 2}], {i, 1, 1}], 0]; 
+    Par\[Zeta] = 
+     Append[Table[Sum[\[Zeta][[k]], {k, i + 1, 2}], {i, 1, 1}], 0];
+    PGenFn[l] Sum[
+      q^(
+       o ((-i1) (1/2 p (-i1) - Par\[Xi][[1]] + 1) + 
+          i1 (1/2 p i1 - Par\[Xi][[2]] + 2)))
+        Det[{{q^((Par\[Zeta][[1]] - 1) (p (-i1) - Par\[Xi][[1]] + 1 + 
+             Par\[Xi][[1]] - 1)), 
+          q^((Par\[Zeta][[2]] - 2) (p (-i1) - Par\[Xi][[1]] + 1 + 
+             Par\[Xi][[2]] - 2))}, {q^((Par\[Zeta][[1]] - 1) (p i1 - 
+             Par\[Xi][[2]] + 2 + Par\[Xi][[1]] - 1)), 
+          q^((Par\[Zeta][[2]] - 2) (p  i1 - Par\[Xi][[2]] + 2 + 
+             Par\[Xi][[2]] - 2))}}], {i1, -l, l}]], 
+   Which[Length[\[Zeta]] != Length[\[Xi]], 
+    Print["Input labels are not matching length."], 
+    Length[\[Zeta]] || Length[\[Xi]], 
+    Print["One or both of input labels are not length 2 and do not \
+correspond to dominant affine sl(2) weights."], ! 
+      AllTrue[\[Zeta], # >= 0 &] && AllTrue[\[Xi], # >= 0 &], 
+    Print["One or both of input labels are not dominant weights."], ! 
+      AllTrue[\[Zeta], IntegerQ] && AllTrue[\[Xi], IntegerQ], 
+    Print["One or both of input labels are not integral weights."]]];
+\[Chi]2test[p_, o_, \[Xi]_, \[Zeta]_, l_] := 
+  If[Length[\[Zeta]] == Length[\[Xi]] && Length[\[Zeta]] == 2 && 
+    AllTrue[\[Zeta], # >= 0 &] && AllTrue[\[Xi], # >= 0 &] && 
+    AllTrue[\[Zeta], IntegerQ] && AllTrue[\[Xi], IntegerQ], 
+   Module[{Par\[Xi], Par\[Zeta]}, 
+    Par\[Xi] = 
+     Append[Table[Sum[\[Xi][[k]], {k, i + 1, 2}], {i, 1, 1}], 0]; 
+    Par\[Zeta] = 
+     Append[Table[Sum[\[Zeta][[k]], {k, i + 1, 2}], {i, 1, 1}], 0];
+    PGenFn[l] Sum[
+      q^(o (i1 (1/2 p i1 - Par\[Xi][[1]] + 1) - 
+          i1 (1/2 p (- i1) - Par\[Xi][[2]] + 2)))
+        Det[{{q^((Par\[Zeta][[1]] - 1) (p i1 - Par\[Xi][[1]] + 1 + 
+             Par\[Xi][[1]] - 1)), 
+          q^((Par\[Zeta][[2]] - 2) (p i1 - Par\[Xi][[1]] + 1 + 
+             Par\[Xi][[2]] - 2))}, {q^((Par\[Zeta][[1]] - 
+             1) (p (- i1) - Par\[Xi][[2]] + 2 + Par\[Xi][[1]] - 1)), 
+          q^((Par\[Zeta][[2]] - 2) (p  (-i1) - Par\[Xi][[2]] + 2 + 
+             Par\[Xi][[2]] - 2))}}], {i1, -l, l}]], 
+   Which[Length[\[Zeta]] != Length[\[Xi]], 
+    Print["Input labels are not matching length."], 
+    Length[\[Zeta]] || Length[\[Xi]], 
+    Print["One or both of input labels are not length 3 and do not \
+correspond to dominant affine sl(2) weights."], ! 
+      AllTrue[\[Zeta], # >= 0 &] && AllTrue[\[Xi], # >= 0 &], 
+    Print["One or both of input labels are not dominant weights."], ! 
+      AllTrue[\[Zeta], IntegerQ] && AllTrue[\[Xi], IntegerQ], 
+    Print["One or both of input labels are not integral weights."]]];
+(*\[Chi][p_,pp_,\[Xi]_,\[Zeta]_,l_]:=If[Length[\[Zeta]]\[Equal]Length[\
+\[Xi]],Module[{n,Var,SumBounds,Par\[Zeta],Par\[Xi]},n=Length[\[Zeta]];\
+Var=Table[Unique["k"],{i,1,n}];SumBounds=Table[{Var[[i]],-l,l},{i,1,n}\
+];
+Par\[Xi]=Append[Table[Sum[\[Xi][[k]],{k,i+1,n}],{i,1,n-1}],0]; 
+Par\[Zeta]=Append[Table[Sum[\[Zeta][[k]],{k,i+1,n}],{i,1,n-1}],0];
+PGenFn[l]^(n-1)Sum[q^(pp Sum[Var[[i]](1/2p \
+Var[[i]]-Par\[Zeta][[i]]+i),{i,1,n}])Det[Table[q^((Par\[Xi][[j]]-j)(p \
+Var[[i]]-Par\[Zeta][[i]]+i+Par\[Zeta][[j]]-j)),{i,1,n},{j,1,n}]],\
+SumBounds
+]],Print["Error, length of weight labels does not match"]]*)
